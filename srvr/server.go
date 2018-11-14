@@ -2,12 +2,14 @@ package srvr
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"time"
 
 	flag "github.com/spf13/pflag"
@@ -15,7 +17,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Book (struct) : inventory of books in the shop
+// Book (struct) : inventory structure of books in the shop
 type Book struct {
 	ID     string `json:"id,omitempty"`
 	Name   string `json:"name,omitempty"`
@@ -24,16 +26,22 @@ type Book struct {
 	//Author *Author `json:"address,omitempty"`
 }
 
-// Author (struct) : details of Author
-// type Author struct {
-// 	City  string `json:"city,omitempty"`
-// 	State string `json:"state,omitempty"`
-// }
+// User (struct) :  info structure of the users
+type User struct {
+	ID       int
+	Name     string
+	username string
+	password string
+}
+
 var server http.Server
 var router = mux.NewRouter()
 var books []Book
 var ids map[int]int
 var count = 2
+
+var users []User
+
 var v *bool
 
 func init() {
@@ -43,22 +51,63 @@ func init() {
 	ids = make(map[int]int)
 	ids[1] = 1
 	ids[2] = 1
-
+	users = append(users, User{ID: 1, Name: "Tom", username: "tom95", password: "pass1"})
+	users = append(users, User{ID: 2, Name: "Harry", username: "harry88", password: "pass2"})
 	router.HandleFunc("/books", GetBooks).Methods("GET")
 	router.HandleFunc("/books/{id}", GetBook).Methods("GET")
 	router.HandleFunc("/books", CreateBook).Methods("POST")
 	router.HandleFunc("/books/{id}", UpdateBook).Methods("UPDATE")
 	router.HandleFunc("/books/{id}", DeleteBook).Methods("DELETE")
+
 	server = http.Server{Addr: ":8000", Handler: router}
+}
+
+func isAuthorised(r *http.Request) bool {
+	authorised := false
+	//Authorization in Header has base and user's credentials encrypted in it
+	rcvdEncrptdAuthArr := strings.Split(r.Header.Get("Authorization"), " ")
+	if len(rcvdEncrptdAuthArr) != 2 {
+		//log.Fatal("request body doesnt have proper authorization format")
+		return false
+	}
+
+	byteCredStr, err := base64.StdEncoding.DecodeString(rcvdEncrptdAuthArr[1])
+	if err != nil {
+		//log.Fatal("couldn't decode credentials to string")
+		return false
+	}
+	credential := string(byteCredStr)
+	//log.Println("credential = ", credential)
+	for _, user := range users {
+		tempCred := strings.Join([]string{user.username, user.password}, ":")
+		if tempCred == credential {
+			log.Println("Authorised")
+			authorised = true
+			break
+		}
+
+	}
+	return authorised
 }
 
 // GetBooks : Display all books from the books variable
 func GetBooks(w http.ResponseWriter, r *http.Request) {
+	if !isAuthorised(r) {
+		//log.Fatal("Not Authorized")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	json.NewEncoder(w).Encode(books)
 }
 
 // GetBook : get a single book by id
 func GetBook(w http.ResponseWriter, r *http.Request) {
+	if !isAuthorised(r) {
+		//log.Fatal("Not Authorized")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	vars := mux.Vars(r)
 
 	//If ID field is empty, return bad request
@@ -84,6 +133,12 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 
 // CreateBook : create a new book entry
 func CreateBook(w http.ResponseWriter, r *http.Request) {
+	if !isAuthorised(r) {
+		//log.Fatal("Not Authorized")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	//add a new book entry in the specified index
 	var book Book
 	// decode json to get the struct equivalent
@@ -124,6 +179,11 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 
 // UpdateBook : create a new book entry
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
+	if !isAuthorised(r) {
+		//log.Fatal("Not Authorized")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	// extract parameters from URL
 	vars := mux.Vars(r)
@@ -177,6 +237,12 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 
 // DeleteBook : Delete a book
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
+	if !isAuthorised(r) {
+		//log.Fatal("Not Authorized")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	// extract parameters from URL
 	vars := mux.Vars(r)
 	newKeyInt, err := strconv.Atoi(vars["id"])

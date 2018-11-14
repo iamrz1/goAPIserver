@@ -2,6 +2,7 @@ package srvr
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,9 +17,9 @@ func TestGetAll(t *testing.T) {
 	// pass 'nil' as the third parameter.
 	req1 := httptest.NewRequest("GET", "/books", nil)
 	req2 := httptest.NewRequest("GET", "/book", nil)
-	reqsts := []*http.Request{req1, req2}
+	rqsts := []*http.Request{req1, req2}
 	statusOutArr := []int{http.StatusOK, http.StatusNotFound}
-	getResponse(t, reqsts, statusOutArr)
+	getResponse(t, rqsts, statusOutArr)
 
 }
 
@@ -32,9 +33,9 @@ func TestGet(t *testing.T) {
 	req2 := httptest.NewRequest("GET", "/books/30", nil)
 	req3 := httptest.NewRequest("GET", "/books/sfsg", nil)
 	req4 := httptest.NewRequest("GET", "/books/", nil)
-	reqsts := []*http.Request{req1, req2, req3, req4}
+	rqsts := []*http.Request{req1, req2, req3, req4}
 	statusOutArr := []int{http.StatusOK, http.StatusNoContent, http.StatusBadRequest, http.StatusNotFound}
-	getResponse(t, reqsts, statusOutArr)
+	getResponse(t, rqsts, statusOutArr)
 }
 
 //TestPost
@@ -48,8 +49,8 @@ func TestPost(t *testing.T) {
 	bks[2] = Book{ID: "", Name: "Get Out", Author: "John Doe", Count: 4}
 	bks[3] = Book{ID: "5", Name: "Hamlet", Author: "William Shakespeare", Count: 3}
 	//create a slice of 4 requests
-	var reqsts []*http.Request
-	reqsts = make([]*http.Request, 4)
+	var rqsts []*http.Request
+	rqsts = make([]*http.Request, 4)
 	// 4 url to api endpoint, last one is incorrect
 	reqURL := []string{"/books", "/books", "/books", "/book"}
 	//populate request array
@@ -58,11 +59,11 @@ func TestPost(t *testing.T) {
 		json.NewEncoder(body).Encode(bks[i])
 		// Create a request to pass to our handler. We have a POST to make, so we'll
 		// pass body as the third parameter.
-		reqsts[i] = httptest.NewRequest("POST", reqURL[i], body)
+		rqsts[i] = httptest.NewRequest("POST", reqURL[i], body)
 	}
 
 	statusOutArr := []int{http.StatusOK, http.StatusConflict, http.StatusBadRequest, http.StatusNotFound}
-	getResponse(t, reqsts, statusOutArr)
+	getResponse(t, rqsts, statusOutArr)
 
 }
 
@@ -77,10 +78,10 @@ func TestUpdate(t *testing.T) {
 	bks[2] = Book{ID: "", Name: "Get Out", Author: "John Doe", Count: 4}
 	bks[3] = Book{ID: "5", Name: "Hamlet", Author: "William Shakespeare", Count: 3}
 	//create a slice of 4 requests
-	var reqsts []*http.Request
-	reqsts = make([]*http.Request, 4)
+	var rqsts []*http.Request
+	rqsts = make([]*http.Request, 4)
 	// 4 url to api endpoint, last three is incorrect
-	reqURL := []string{"/books/3", "/books/7", "/books/hj", "/book"}
+	reqURL := []string{"/books/1", "/books/7", "/books/hj", "/book"}
 	//populate request array
 	for i := 0; i < 4; i++ {
 
@@ -88,14 +89,15 @@ func TestUpdate(t *testing.T) {
 		json.NewEncoder(body).Encode(bks[i])
 		// Create a request to pass to our handler. We have a POST to make, so we'll
 		// pass body as the third parameter.
-		reqsts[i] = httptest.NewRequest("UPDATE", reqURL[i], body)
+		rqsts[i] = httptest.NewRequest("UPDATE", reqURL[i], body)
+
 	}
 
 	// Create a request to pass to our handler. We have a POST to make, so we'll
 	// pass body as the third parameter.
 
 	statusOutArr := []int{http.StatusOK, http.StatusNotFound, http.StatusBadRequest, http.StatusNotFound}
-	getResponse(t, reqsts, statusOutArr)
+	getResponse(t, rqsts, statusOutArr)
 
 }
 
@@ -105,13 +107,13 @@ func TestDelete(t *testing.T) {
 	fmt.Println("Testing DELETE")
 	// Create a request to serveHTTP. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.
-	req1 := httptest.NewRequest("DELETE", "/books/1", nil)
-	req2 := httptest.NewRequest("DELETE", "/books/1", nil)
+	req1 := httptest.NewRequest("DELETE", "/books/2", nil)
+	req2 := httptest.NewRequest("DELETE", "/books/2", nil)
 	req3 := httptest.NewRequest("DELETE", "/books/sfsg86", nil)
 	req4 := httptest.NewRequest("DELETE", "/books/", nil)
-	reqsts := []*http.Request{req1, req2, req3, req4}
+	rqsts := []*http.Request{req1, req2, req3, req4}
 	statusOutArr := []int{http.StatusOK, http.StatusGone, http.StatusBadRequest, http.StatusNotFound}
-	getResponse(t, reqsts, statusOutArr)
+	getResponse(t, rqsts, statusOutArr)
 }
 
 //getResponse takes https requests, and expected output status
@@ -122,6 +124,8 @@ func getResponse(t *testing.T, req []*http.Request, statusOutArr []int) {
 	for i, val := range req {
 		fmt.Println("Test case : ", i+1)
 		res := httptest.NewRecorder()
+
+		val.Header.Set("Authorization", "Base "+base64.StdEncoding.EncodeToString([]byte("tom95:pass1")))
 		//Now the response request pair is served via http
 		router.ServeHTTP(res, val)
 

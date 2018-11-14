@@ -44,6 +44,7 @@ var users []User
 var logger string
 
 var v bool
+var bypassLogin bool
 
 func init() {
 
@@ -59,6 +60,7 @@ func init() {
 	router.HandleFunc("/books", CreateBook).Methods("POST")
 	router.HandleFunc("/books/{id}", UpdateBook).Methods("UPDATE")
 	router.HandleFunc("/books/{id}", DeleteBook).Methods("DELETE")
+
 	logger = "Start:\n"
 
 }
@@ -93,8 +95,7 @@ func isAuthorised(r *http.Request) bool {
 
 // GetBooks : Display all books from the books variable
 func GetBooks(w http.ResponseWriter, r *http.Request) {
-
-	if !isAuthorised(r) {
+	if !isAuthorised(r) && !bypassLogin {
 		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -286,19 +287,19 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 }
 
 //PostMain Former main function
-func PostMain(port string, verbose bool) {
+func PostMain(port string, verbose bool, noLogin bool) {
 
 	// f := flag.Int("f", 1234, "help message for flagname")
 	// n := flag.String("name", "John Doe", "Help mesage for NAME")
 	// //(name, shorthand,value,usage)
 	//v = flag.BoolP("vFlag", "v", false, "help message")
-	// flag.Lookup("vFlag").NoOptDefVal = "true"
-	// flag.Parse()
+
 	// fmt.Println("ip has value ", *f)
 	// fmt.Println("name has value ", *n)
 	//fmt.Println("V has value ", *v)
+	bypassLogin = noLogin
 	v = verbose
-	if v == true {
+	if v {
 		log.Println(v, "Running in verbose mode")
 	} else {
 		log.Println("Not running in verbose mode")

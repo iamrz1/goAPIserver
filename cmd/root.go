@@ -10,16 +10,17 @@ import (
 
 var port string
 var verbose bool
+var noLogin bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "GoApiServer",
 	Short: "API endpints for CRUD operations",
-	Long:  `Use flags to change the default port`,
+	Long:  `GoApiServer - provides API endpints for CRUD operations. Use flags to change the default port, or toggle verbose mode`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		srvr.PostMain(port, verbose)
+		srvr.PostMain(port, verbose, noLogin)
 	},
 }
 
@@ -41,8 +42,9 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&port, "port", "8080", "Set the port name for the API server. Default 8080")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Set verbose mode on for the API server. Default is false.")
+	rootCmd.PersistentFlags().BoolVarP(&noLogin, "bypassLogin", "b", false, "Set -->no login<-- mode on for the API server. Default is false.")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	//helpBool := rootCmd.Flags().BoolP("help", "h", false, "Help message - returns flag list")
 }

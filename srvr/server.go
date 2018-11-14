@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	flag "github.com/spf13/pflag"
 
 	"github.com/gorilla/mux"
 )
@@ -42,7 +41,9 @@ var count = 2
 
 var users []User
 
-var v *bool
+var logger string
+
+var v bool
 
 func init() {
 
@@ -58,8 +59,8 @@ func init() {
 	router.HandleFunc("/books", CreateBook).Methods("POST")
 	router.HandleFunc("/books/{id}", UpdateBook).Methods("UPDATE")
 	router.HandleFunc("/books/{id}", DeleteBook).Methods("DELETE")
+	logger = "Start:\n"
 
-	server = http.Server{Addr: ":8000", Handler: router}
 }
 
 func isAuthorised(r *http.Request) bool {
@@ -81,7 +82,7 @@ func isAuthorised(r *http.Request) bool {
 	for _, user := range users {
 		tempCred := strings.Join([]string{user.username, user.password}, ":")
 		if tempCred == credential {
-			log.Println("Authorised")
+			logger = logger + "Authorised. \n"
 			authorised = true
 			break
 		}
@@ -92,18 +93,21 @@ func isAuthorised(r *http.Request) bool {
 
 // GetBooks : Display all books from the books variable
 func GetBooks(w http.ResponseWriter, r *http.Request) {
+
 	if !isAuthorised(r) {
-		//log.Fatal("Not Authorized")
+		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	json.NewEncoder(w).Encode(books)
+
 }
 
 // GetBook : get a single book by id
 func GetBook(w http.ResponseWriter, r *http.Request) {
+
 	if !isAuthorised(r) {
-		//log.Fatal("Not Authorized")
+		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -111,8 +115,11 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	//If ID field is empty, return bad request
-	idInt, _ := strconv.Atoi(vars["id"])
-	if len(vars["id"]) != len(strconv.Itoa(idInt)) {
+	_, err := strconv.Atoi(vars["id"])
+
+	//id is not convertable, therefore alphabets exist
+	if err != nil {
+		logger = logger + "Bad ID Found \n"
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -127,18 +134,18 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	//if no match is found,
-	//fmt.Println("No Match Found")
+	logger = logger + "No Match Found \n"
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // CreateBook : create a new book entry
 func CreateBook(w http.ResponseWriter, r *http.Request) {
+
 	if !isAuthorised(r) {
-		//log.Fatal("Not Authorized")
+		logger = logger + "Not Authorized. "
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
 	//add a new book entry in the specified index
 	var book Book
 	// decode json to get the struct equivalent
@@ -148,14 +155,14 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	//If json can not be decoded to struct, return bad request
 	if err != nil {
 		//http.Error(w, err.Error(), http.StatusBadRequest)
-
+		logger = logger + "Json could not be decoded \n"
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	//If ID field is invalid, return bad request
 	newKeyInt, err := strconv.Atoi(book.ID)
-	//id is not convertable, therefore alphabatels exist
+	//id is not convertable, therefore alphabets exist
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -179,8 +186,9 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 
 // UpdateBook : create a new book entry
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
+
 	if !isAuthorised(r) {
-		//log.Fatal("Not Authorized")
+		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -237,8 +245,9 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 
 // DeleteBook : Delete a book
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
+
 	if !isAuthorised(r) {
-		//log.Fatal("Not Authorized")
+		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -277,29 +286,35 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 }
 
 //PostMain Former main function
-func PostMain() {
+func PostMain(port string, verbose bool) {
 
 	// f := flag.Int("f", 1234, "help message for flagname")
 	// n := flag.String("name", "John Doe", "Help mesage for NAME")
 	// //(name, shorthand,value,usage)
-	v = flag.BoolP("vFlag", "v", false, "help message")
-	flag.Lookup("vFlag").NoOptDefVal = "true"
-	flag.Parse()
+	//v = flag.BoolP("vFlag", "v", false, "help message")
+	// flag.Lookup("vFlag").NoOptDefVal = "true"
+	// flag.Parse()
 	// fmt.Println("ip has value ", *f)
 	// fmt.Println("name has value ", *n)
 	//fmt.Println("V has value ", *v)
-	if *v == true {
-		log.Println(*v, "Running in verbose mode")
+	v = verbose
+	if v == true {
+		log.Println(v, "Running in verbose mode")
 	} else {
 		log.Println("Not running in verbose mode")
 	}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
+	server = http.Server{Addr: ":" + port, Handler: router}
 
 	go startServer()
 	<-stop
 	stopServer()
+	if v {
+		logger = logger + " :End"
+		fmt.Println(logger)
+	}
 
 }
 func startServer() {
@@ -313,7 +328,7 @@ func stopServer() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	if cancel != nil {
-		//Do stuff
+		//log.Println("Server is not running.")
 	}
 	server.Shutdown(ctx)
 	log.Printf("Server Closed")

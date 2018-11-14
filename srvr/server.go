@@ -107,8 +107,8 @@ func GetBooks(w http.ResponseWriter, r *http.Request) {
 // GetBook : get a single book by id
 func GetBook(w http.ResponseWriter, r *http.Request) {
 
-	if !isAuthorised(r) {
-		logger = logger + "Not Authorized. \n"
+	if !isAuthorised(r) && !bypassLogin {
+		logger = logger + "Not Authorized."
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -142,7 +142,7 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 // CreateBook : create a new book entry
 func CreateBook(w http.ResponseWriter, r *http.Request) {
 
-	if !isAuthorised(r) {
+	if !isAuthorised(r) && !bypassLogin {
 		logger = logger + "Not Authorized. "
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -188,7 +188,7 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 // UpdateBook : create a new book entry
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
 
-	if !isAuthorised(r) {
+	if !isAuthorised(r) && !bypassLogin {
 		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -247,7 +247,7 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 // DeleteBook : Delete a book
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
 
-	if !isAuthorised(r) {
+	if !isAuthorised(r) && !bypassLogin {
 		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return

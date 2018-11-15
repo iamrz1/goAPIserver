@@ -58,7 +58,7 @@ func init() {
 	router.HandleFunc("/books", GetBooks).Methods("GET")
 	router.HandleFunc("/books/{id}", GetBook).Methods("GET")
 	router.HandleFunc("/books", CreateBook).Methods("POST")
-	router.HandleFunc("/books/{id}", UpdateBook).Methods("UPDATE")
+	router.HandleFunc("/books/{id}", UpdateBook).Methods("PUT")
 	router.HandleFunc("/books/{id}", DeleteBook).Methods("DELETE")
 
 	logger = "Start:\n"
@@ -95,20 +95,28 @@ func isAuthorised(r *http.Request) bool {
 
 // GetBooks : Display all books from the books variable
 func GetBooks(w http.ResponseWriter, r *http.Request) {
+	logger = ":::Getting all Books \n "
 	if !isAuthorised(r) && !bypassLogin {
 		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	json.NewEncoder(w).Encode(books)
+	logger = logger + "Got them all \n"
+	if v {
+		logger = logger + "End:::"
+		fmt.Println(logger)
+	}
 
 }
 
 // GetBook : get a single book by id
 func GetBook(w http.ResponseWriter, r *http.Request) {
 
+	found := false
+	logger = ":::Getting the Book \n"
 	if !isAuthorised(r) && !bypassLogin {
-		logger = logger + "Not Authorized."
+		logger = logger + "Not Authorized.\n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -125,28 +133,41 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//Find a match by id
+	logger = logger + "Lokking for a book with ID = " + vars["id"] + " \n"
 	for _, item := range books {
 		if item.ID == vars["id"] {
-			//add it to existing list
+			//return the created book
 			var b []Book
 			b = append(b, item)
 			json.NewEncoder(w).Encode(b)
-			return
+			found = true
+			break
 		}
 	}
-	//if no match is found,
-	logger = logger + "No Match Found \n"
-	w.WriteHeader(http.StatusNoContent)
+	//if Found
+	if found {
+		logger = logger + "Got the book \n"
+	} else {
+		//if no match is found,
+		logger = logger + "No Match Found \n"
+		w.WriteHeader(http.StatusNoContent)
+	}
+	if v {
+		logger = logger + "End:::"
+		fmt.Println(logger)
+	}
+
 }
 
 // CreateBook : create a new book entry
 func CreateBook(w http.ResponseWriter, r *http.Request) {
-
+	logger = ":::Creating Book \n"
 	if !isAuthorised(r) && !bypassLogin {
-		logger = logger + "Not Authorized. "
+		logger = logger + "Not Authorized.\n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
 	//add a new book entry in the specified index
 	var book Book
 	// decode json to get the struct equivalent
@@ -160,22 +181,26 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
+	logger = logger + "Json decoded to a new Book\n"
 	//If ID field is invalid, return bad request
 	newKeyInt, err := strconv.Atoi(book.ID)
 	//id is not convertable, therefore alphabets exist
 	if err != nil {
+		logger = logger + "ID of the new Book is invalid\n"
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
+	logger = logger + "ID of the new Book is valid\n"
 	if ids[newKeyInt] == 1 {
+
 		//Duplicate Found
+		logger = logger + "Duplicate ID Found\n"
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
 	//if no duplicate exists
+	logger = logger + "No duplicate ID Found\n"
 
 	ids[newKeyInt] = 1
 
@@ -183,27 +208,34 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	//add the new entry to our existing book entries
 	books = append(books, book)
 	json.NewEncoder(w).Encode(books)
+	logger = logger + "Book added to library\n"
+	if v {
+		logger = logger + "End:::"
+		fmt.Println(logger)
+	}
 }
 
 // UpdateBook : create a new book entry
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
-
+	logger = "Updating: "
 	if !isAuthorised(r) && !bypassLogin {
 		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	logger = logger + "Update Authorized \n"
 
 	// extract parameters from URL
 	vars := mux.Vars(r)
 	newKey := vars["id"]
 	newKeyInt, err := strconv.Atoi(newKey)
 
-	//If ID field is invalid, return bad request
+	//If ID field from url is invalid, return bad request
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	logger = logger + "ID field from url is valid \n"
 	//If requested key DOESNT exist, it will have the value 0
 	if ids[newKeyInt] != 1 {
 		//ID not found, Send badrequest status code
@@ -221,32 +253,44 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
+	logger = logger + "Request decoded to book successfully \n"
 	//Find the index of the book and
 	//update book entry in the correspondin index
 	//Iterate over books to find the book by id
 	for index, item := range books {
 		if item.ID == vars["id"] {
-			books[index].ID = book.ID
-			if len(book.ID) == 0 {
-				books[index].ID = vars["id"]
+			logger = logger + "Found the book by ID = " + vars["id"] + "\n"
+			//check if the new ID field from request is valid
+			_, err := strconv.Atoi(book.ID)
+
+			//If decoded ID field is invalid, ignore
+			//if new decoded ID is valid, replace the old book ID with it
+			if err == nil {
+				books[index].ID = book.ID
+				logger = logger + "Old book ID replaced by ID = " + book.ID + "\n"
+
 			}
+
 			books[index].Name = book.Name
 			books[index].Author = book.Author
 			books[index].Count = book.Count
+			//return the updated book
+			var b []Book
+			b = append(b, books[index])
+			json.NewEncoder(w).Encode(b)
 			break
 		}
 	}
-
-	var b []Book
-	b = append(b, book)
-	json.NewEncoder(w).Encode(b)
-
+	logger = logger + "Updated \n"
+	if v {
+		logger = logger + " :End"
+		fmt.Println(logger)
+	}
 }
 
 // DeleteBook : Delete a book
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
-
+	logger = ":::Deleting a Book \n"
 	if !isAuthorised(r) && !bypassLogin {
 		logger = logger + "Not Authorized. \n"
 		w.WriteHeader(http.StatusUnauthorized)
@@ -262,14 +306,20 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//initially, deleted = flase
+	//initially, deleted = false
 	deleted := false
 	//Iterate over books to find the book by id
 	for index, item := range books {
 		if item.ID == vars["id"] {
+			//return the deleted book
+			var b []Book
+			b = append(b, item)
+			json.NewEncoder(w).Encode(b)
+
 			//Delete the book with matching ID
 			books = append(books[:index], books[index+1:]...)
 			deleted = true
+
 			break
 		}
 	}
@@ -281,9 +331,12 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	//remove from ids array
 
 	ids[newKeyInt] = 0
+	logger = logger + "Deleted \n"
+	if v {
+		logger = logger + " :End"
+		fmt.Println(logger)
+	}
 
-	//return the books
-	json.NewEncoder(w).Encode(books)
 }
 
 //PostMain Former main function
@@ -312,10 +365,6 @@ func PostMain(port string, verbose bool, noLogin bool) {
 	go startServer()
 	<-stop
 	stopServer()
-	if v {
-		logger = logger + " :End"
-		fmt.Println(logger)
-	}
 
 }
 func startServer() {

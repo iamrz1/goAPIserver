@@ -1,5 +1,5 @@
 # APIServer for Bookstore using using CLI [Cobra](https://github.com/spf13/cobra)
-###API endpints for CRUD functions
+##API endpints for CRUD functions
 ## Example commands to run
 
 - The following command will run the book server at port 8080 and it requires the authentication from user,

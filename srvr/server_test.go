@@ -89,7 +89,7 @@ func TestUpdate(t *testing.T) {
 		json.NewEncoder(body).Encode(bks[i])
 		// Create a request to pass to our handler. We have a POST to make, so we'll
 		// pass body as the third parameter.
-		rqsts[i] = httptest.NewRequest("UPDATE", reqURL[i], body)
+		rqsts[i] = httptest.NewRequest("PUT", reqURL[i], body)
 
 	}
 
